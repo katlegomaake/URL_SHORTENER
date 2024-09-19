@@ -1,0 +1,166 @@
+import java.util.HashMap;
+import java.util.InputMismatchException;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.regex.Pattern;
+
+public class URLShortener {
+
+    // HashMaps to store long URLs, short URLs,  and track how many times short URLs have been accessed
+    private static HashMap<String, String> urlMap = new HashMap<>();
+    private static HashMap<String, String> shortUrlMap = new HashMap<>();
+    private static HashMap<String, Integer> urlAccessCount = new HashMap<>();
+
+    // Constants for the base URL, the characters allowed in short URLs, and the length of the short URL
+    private static final String BASE_URL = "http://short.ly/";
+    private static final String CHARACTERS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    private static final int SHORT_URL_LENGTH = 6;
+
+    //  to check if the URL is valid (starts with "http" or "https")
+    private static final Pattern URL_PATTERN = Pattern.compile("^(http|https)://.*$");
+
+    // Method to generate a random short URL key with 6 characters
+    private static String generateShortKey() {
+        StringBuilder shortUrlKey = new StringBuilder(SHORT_URL_LENGTH);
+        // Generates random numbers
+        Random random = new Random();
+
+        // Loop through and generate each character for the short URL
+        for (int i = 0; i < SHORT_URL_LENGTH; i++) {
+            shortUrlKey.append(CHARACTERS.charAt(random.nextInt(CHARACTERS.length())));
+        }
+        return shortUrlKey.toString(); // Return the generated short URL
+    }
+
+    // Method to check if a URL is valid
+    public static boolean isValidURL(String url) {
+        // Validate the URL against the pattern
+        return URL_PATTERN.matcher(url).matches();
+    }
+
+    // Method to shorten a long URL
+    public static String shortenURL(String longUrl) {
+        // If the URL has already been shortened, the   existing short URLmust be returned
+        if (urlMap.containsKey(longUrl)) {
+            return BASE_URL + urlMap.get(longUrl);
+        }
+
+        String shortUrlKey;
+        // Generate a unique short URL key that isn't already in use
+        do {
+            shortUrlKey = generateShortKey();
+        } while (shortUrlMap.containsKey(shortUrlKey));
+
+        // Store the new shortened URL and initialize its access count to 0
+        urlMap.put(longUrl, shortUrlKey);
+        shortUrlMap.put(shortUrlKey, longUrl);
+        urlAccessCount.put(shortUrlKey, 0);
+
+        // Log the newly shortened URL
+        System.out.println("Logging: New URL shortened -> " + longUrl + " to " + shortUrlKey);
+        return BASE_URL + shortUrlKey; // Return the short URL
+    }
+
+    // Method to get the original long URL from the short URL
+    public static String getOriginalURL(String shortUrl) {
+        String shortKey = shortUrl.replace(BASE_URL, ""); // Extract the unique key from the short URL
+
+        // If the short URL exists, increment the access count and return the long URL
+        if (shortUrlMap.containsKey(shortKey)) {
+            urlAccessCount.put(shortKey, urlAccessCount.get(shortKey) + 1); // Update access count
+            System.out.println("Logging: URL access for -> " + shortKey + " Access count: " + urlAccessCount.get(shortKey));
+            return shortUrlMap.get(shortKey); // Return the original long URL
+        } else {
+            return "Error: URL not found!"; // If not found, return an error message
+        }
+    }
+
+    // Method to show all shortened URLs and how many times each has been accessed
+    public static void displayUrlHistory() {
+        if (urlMap.isEmpty()) { // If no URLs have been shortened yet
+            System.out.println("No URLs have been shortened yet.");
+        } else {
+            System.out.println("\nShortened URLs History");
+            // For each long URL, display its short URL and access count
+            for (String longUrl : urlMap.keySet()) {
+                String shortKey = urlMap.get(longUrl);
+                String shortUrl = BASE_URL + shortKey;
+                int accessCount = urlAccessCount.get(shortKey); // Get how many times the short URL was accessed
+
+                // Display the long URL, short URL, and access count
+                System.out.println("Long URL: " + longUrl);
+                System.out.println("Short URL: " + shortUrl);
+                System.out.println("Access Count: " + accessCount);
+                System.out.println("-------------------------");
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in); // Scanner to read input
+        int choice = -1; // Variable to hold user's menu choice
+
+        // Display menu options in a loop until the user chooses to exit
+        do {
+            System.out.println("\nWelcome to Hex Software URL Shortening Service");
+            System.out.println("Please choose your choice from the following menu:");
+            System.out.println("1. Shorten a URL (e.g., http://example.com)");
+            System.out.println("2. Retrieve the Original URL");
+            System.out.println("3. View Shortened URL History");
+            System.out.println("4. Exit");
+            System.out.print("Enter your choice: ");
+
+            try {
+                choice = scanner.nextInt(); // Get the user's choice
+                scanner.nextLine(); // Clear the buffer
+
+                // Switch case to handle each menu option
+                switch (choice) {
+                    case 1:
+                        // Shortening a URL
+                        System.out.println("Note: The URL must start with http:// or https://");
+                        System.out.print("Enter the long URL: ");
+                        String longUrl = scanner.nextLine(); // Get the long URL
+
+                        // If the URL is valid, shorten it
+                        if (isValidURL(longUrl)) {
+                            String shortUrl = shortenURL(longUrl);
+                            System.out.println("Shortened URL: " + shortUrl);
+                        } else {
+                            System.out.println("Invalid URL format. Example of valid URLs: http://example.com or https://example.com");
+                        }
+                        break;
+
+                    case 2:
+                        // Retrieve the original URL using the short URL
+                        System.out.print("Enter the shortened URL: ");
+                        String shortUrlInput = scanner.nextLine();
+                        String originalUrl = getOriginalURL(shortUrlInput);
+                        System.out.println("Original URL: " + originalUrl);
+                        break;
+
+                    case 3:
+                        // Display all shortened URLs and their access counts
+                        displayUrlHistory();
+                        break;
+
+                    case 4:
+                        // Exit the program
+                        System.out.println("Exiting the URL Shortening Service. Thank you for using our service!");
+                        break;
+
+                    default:
+                        // Handle invalid menu option
+                        System.out.println("Invalid choice. Please try again.");
+                }
+            } catch (InputMismatchException e) {
+                // Handle non-numeric input for the menu choice
+                System.out.println("Invalid input. Please enter a valid number.");
+                scanner.nextLine(); // Clear invalid input
+            }
+
+        } while (choice != 4); // Continue until the user selects 'Exit'
+
+        scanner.close(); // Close the scanner to free up resources
+    }
+}
